@@ -49,6 +49,20 @@ type DownloadProgress = {
   error?: string;
 };
 
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const body = await response.text();
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    const responseType = body.trim() ? "non-JSON" : "empty";
+    const endpoint = response.url ? new URL(response.url).pathname : "API";
+    throw new Error(
+      `The ${endpoint} endpoint returned an ${responseType} response (HTTP ${response.status}). Check the Vercel function logs.`
+    );
+  }
+}
+
 // ============================================================
 // YOUTUBE ID EXTRACTOR
 // Supports:
@@ -186,10 +200,21 @@ export default function VideoPreview() {
         `/api/media/info?url=${encodeURIComponent(trimmedUrl)}`
       );
 
-      const json = await res.json();
+      const json = await readJsonResponse<{
+        success?: boolean;
+        error?: string;
+        message?: string;
+        data?: Info;
+      }>(res);
 
       if (!res.ok || !json.success) {
-        throw new Error(json.error || "Unable to fetch media information");
+        throw new Error(
+          json.error || json.message || "Unable to fetch media information"
+        );
+      }
+
+      if (!json.data) {
+        throw new Error("The server response did not include video information.");
       }
 
       setInfo(json.data);
@@ -240,11 +265,11 @@ export default function VideoPreview() {
       const response = await fetch(`/api/media/download?${params.toString()}`, {
         method: "POST",
       });
-      const result = (await response.json()) as {
-        success: boolean;
+      const result = await readJsonResponse<{
+        success?: boolean;
         jobId?: string;
         error?: string;
-      };
+      }>(response);
 
       if (!response.ok || !result.success || !result.jobId) {
         throw new Error(result.error || "Unable to start this download");
@@ -260,9 +285,9 @@ export default function VideoPreview() {
           `/api/media/download?jobId=${encodeURIComponent(jobId)}`,
           { cache: "no-store" }
         );
-        const progress = (await progressResponse.json()) as Omit<DownloadProgress, "type"> & {
+        const progress = await readJsonResponse<Omit<DownloadProgress, "type"> & {
           success: boolean;
-        };
+        }>(progressResponse);
 
         if (!progressResponse.ok || !progress.success) {
           throw new Error(progress.error || "Unable to read download progress");
@@ -691,4 +716,3 @@ function SkeletonCard() {
     </div>
   );
 }
-
