@@ -1,0 +1,7 @@
+export const DOWNLOAD_PROGRESS_MARKER = '__YTDLP_PROGRESS__';
+export const DOWNLOAD_CHUNK_SIZE = 64 * 1024;
+export const MIN_VISIBLE_TRANSFER_MS = 3000;
+export const MAX_TRANSFER_BYTES_PER_SECOND = 8 * 1024 * 1024;
+export const MERGE_MIN_DISPLAY_MS = 800;
+export const PREPARED_DOWNLOAD_TTL_MS = 30 * 60 * 1000;
+export const ERROR_CLEANUP_TTL_MS = 2 * 60 * 1000;
